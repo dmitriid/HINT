@@ -49,6 +49,7 @@ Give some time for web.sh to start completely. If it doesn't work, clean && comp
 3. Demo URLs (on Monday):  
 - http://memorici.de:52012
 - http://booktu.com
+- http://dmitriid.com:52012
 
 One of these will work :)
 

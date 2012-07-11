@@ -7,6 +7,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 init(_, Req, _) ->
+	saloon_init:prepare(Req),
 	{ok, Req, 0}.
 
 handle(Req, State) ->
@@ -18,6 +19,7 @@ handle(Req, State) ->
 						case hint_search:q(Q) of
 							{error, _Reason} -> render(error);
 							{ok, Data} -> 
+								?debugFmt("Results for query:~n~p", [Data]),
 								Data1 = lists:sublist(Data, 10),
 								render(Data1)
 						end;

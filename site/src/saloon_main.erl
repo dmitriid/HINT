@@ -7,10 +7,10 @@
 -include_lib("eunit/include/eunit.hrl").
 
 init({_Any, http}, Req, []) ->
+	saloon_init:prepare(Req),
 	{ok, Req, 0}.
 
 handle(Req, State) ->
-	saloon_init:prepare(Req),
 	%?debugFmt(
 	%	"erlydtl:compile: ~p~n", 
 	%	[
@@ -22,9 +22,6 @@ handle(Req, State) ->
 	%	]
 	%),
 	{ok, Rendered} = main_dtl:render([
-		%{name, <<"Forever Alone Guy">>},
-		%{friends, []},
-		%{primes, ["2", <<"3">>, 5, 7]}
 		{me, [
 				{category, <<"">>},
 				{controller, <<"saloon_main">>}
@@ -35,11 +32,10 @@ handle(Req, State) ->
 			[{name, <<"landing">>}]
 		]}
 	]),
-	?debugFmt("=RENDERING===~n~p~n", [Rendered]),
 	{ok, Rep} = cowboy_http_req:reply(
 		200, [], Rendered, Req
 	),
-	%{ok , Rep} = cowboy_http_req:reply(200, [], "ok", Req),
+
 	{ok, Rep, State+1}.
 
 terminate(_R, _S) ->

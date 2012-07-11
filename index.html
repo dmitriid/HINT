@@ -1,0 +1,229 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Hint by dmitriid</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Hint</h1>
+        <p>Erlang type search engine.</p>
+
+        <p class="view"><a href="https://github.com/dmitriid/HINT">View the Project on GitHub <small>dmitriid/HINT</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/dmitriid/HINT/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/dmitriid/HINT/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/dmitriid/HINT">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>TOC</h1>
+
+<ol>
+<li>What is it?<br>
+DEMO</li>
+<li>Technical details</li>
+<li>How to?<br>
+3.1 Generate your own PLT<br>
+3.2 Use your own PLT<br>
+3.3 See some results on the command line<br>
+</li>
+<li>Weak points and future solutions</li>
+</ol><h1>1. WHAT IS IT?</h1>
+
+<p>Have you ever tried Hoogle? <a href="http://www.haskell.org/hoogle/">http://www.haskell.org/hoogle/</a></p>
+
+<p>If you haven't, here's a brief description. </p>
+
+<p>Quite often you don't know the name of a function, or the name of the module it resides in, but you know what types you'd like this function to accept and what types this function will output.</p>
+
+<p>Hoogle let's you search based on type signatures of functions. One small problem though... It's Haskell only, no Erlang.</p>
+
+<p>Wouldn't it be nice to type in something like</p>
+
+<pre><code>   proplists:?(any(), list()) -&gt; any()
+</code></pre>
+
+<p>and get back</p>
+
+<pre><code>   proplists:get_value
+</code></pre>
+
+<p>Or type in </p>
+
+<pre><code>   "(erlang:timestamp(),erlang:timestamp())-&gt;integer()"
+</code></pre>
+
+<p>and get back</p>
+
+<pre><code>   erlang:now_diff
+</code></pre>
+
+<p>?</p>
+
+<p>That's the goal of HINT: to provide you with a way to search for function definitions and documentation by function type signatures.</p>
+
+<h1>DEMO</h1>
+
+<ol>
+<li>Start web.sh</li>
+<li>Go to <a href="http://127.0.0.1/52012">http://127.0.0.1/52012</a>
+</li>
+</ol><p>Give some time for web.sh to start completely. If it doesn't work, clean &amp;&amp; compile &amp;&amp; run.</p>
+
+<ol>
+<li>Demo URLs (on Monday):<br>
+</li>
+<li><a href="http://memorici.de:52012">http://memorici.de:52012</a></li>
+<li><a href="http://booktu.com">http://booktu.com</a></li>
+<li><a href="http://dmitriid.com:52012">http://dmitriid.com:52012</a></li>
+</ol><p>One of these will work :)</p>
+
+<h1>4. HOW TO</h1>
+
+<h2>4.1 Generate your own PLT</h2>
+
+<p>The problem with PLTs is that they are slow to generate and that they contain hard-coded links to .beam files on you system, so we cannot provide you with one.</p>
+
+<p>We recommend you generate a "tiny version" of PLT. Otherwise you might end up waiting for search results forever (or run out of memory).</p>
+
+<p>In order to generate a tiny PLT, run the following in your shell:
+       dialyzer --build_plt --apps kernel stdlib erts crypto sasl --output_plt tiny_plt</p>
+
+<h2>4.2 Use your own PLT</h2>
+
+<p>Make sure that application environment contains</p>
+
+<pre><code>       {env, [{plt_path, PATH/TO/YOUR/PLT]}
+</code></pre>
+
+<p>or
+           {env, [{plt_path, {priv_dir, PLT}}]}</p>
+
+<h2>4.3 See some results on the command line</h2>
+
+<p>In PROJECT_ROOT:</p>
+
+<pre><code>   bash&gt; erl -pa apps/hint_search/ebin
+   &gt; hint_search:start().
+   &gt; hint_search:q("(erlang:timestamp(),erlang:timestamp())-&gt;integer()").
+   {ok,[{{timer,now_diff,2},1.5},
+        {{dets,init,2},0.9},
+        {{crypto,dh_generate_parameters,2},0.9},
+        {{dets,next,2},0.9},
+   ...
+</code></pre>
+
+<h1>2. Technical details</h1>
+
+<p>Frontend:</p>
+
+<ul>
+<li>Cowboy web-server</li>
+<li>Custom controllers</li>
+<li>Regular web stuff</li>
+<li>Fuzzy search on provided names</li>
+</ul><p>Backend:</p>
+
+<ul>
+<li>derive Module, Funciton, Arity from user request</li>
+<li>create possible permutations of these</li>
+<li>call Dialyzer to check types</li>
+<li>create a ranking of Module-Function pairs based on Dialyzer output</li>
+<li>return these to the user</li>
+</ul><p>On startup we read from a supplied PLT file and cache information on all available MFAs in the PLT (plt_cache_server)</p>
+
+<p>Once we receive a request, we do the following:</p>
+
+<ol>
+<li>Derive Module, Funciton, Arity</li>
+<li>
+<p>For each MFA in cache where A = Arity:
+2.1 For each possible permutation of parameters in MFA<br>
+2.2 Write custom functions:  </p>
+
+<pre><code>    -spec func_permutation_1(UserProvidedSpecs...
+    func_permutation_1(Param1, Param2, Param3, ..., ParamArity) -&gt;
+               M:F(permutation 1 of Param1, Param2, Param3, ..., ParamArity).
+
+    -spec func_permutation_2(UserProvidedSpecs...
+    func_permutation_2(Param1, Param2, Param3, ..., ParamArity) -&gt;
+              M:F(permutation 2 of Param1, Param2, Param3, ..., ParamArity).
+    ...
+</code></pre>
+</li>
+<li><p>Once the file with custom functions is complete, run Dialyzer over it</p></li>
+<li><p>For each warning generated by Dialyzer:<br>
+  4.1 Match permutation and warning against MFA<br>
+  4.2 Store warnings with MFA  </p></li>
+<li><p>For each MFA for which there are no warnings (full type match):<br>
+  5.1 Store the MFA with no warnings</p></li>
+<li>
+<p>For each MFA that we have<br>
+  6.1 Rank based on module name (extremely long and extremely short names decrease the rank)<br>
+  6.2 Rank based on function name (extremely long names decrease the rank)<br>
+  6.3 Rank based on warnings  </p>
+
+<ul>
+<li>Various diyalizer warnings decrease rank<br>
+</li>
+<li>If there are less warnings than permutations, it means that some of the permutations matched, increase rank<br>
+</li>
+<li>If there are no warnings, all permutations matched, increase rank<br>
+</li>
+</ul>
+</li>
+<li><p>Final rank for each MFA is the sum all ranks for that MFA</p></li>
+<li><p>Reverse sort MFAs based on rank</p></li>
+<li><p>Return list of MFAs</p></li>
+</ol><h1>3. Weak points and future solutions</h1>
+
+<ol>
+<li>
+<p>Requires PLT<br>
+1.1 Takes insane amounts of time to build<br>
+Solution: build several smaller PLTs, search across them<br>
+1.2 Takes insane amounts of memory for Dialyzer to process<br>
+Solution:  </p>
+
+<ul>
+<li>build several smaller PLTs, search across them cache<br>
+</li>
+<li>search result for common searches<br>
+</li>
+</ul>
+</li>
+<li>
+<p>Permutations<br>
+2.1 Take a long time to generate on each search<br>
+Solution:  </p>
+
+<ul>
+<li>precompute permutations when loading PLT on startup<br>
+</li>
+<li>save files with premutations for more common searches<br>
+</li>
+</ul>
+</li>
+</ol>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/dmitriid">dmitriid</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>

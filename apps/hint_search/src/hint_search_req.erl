@@ -39,6 +39,9 @@
              , string = ""
              }).
 
+-opaque req() :: #req{}.
+-export_type([req/0]).
+
 %%% API
 
 parse(String) ->

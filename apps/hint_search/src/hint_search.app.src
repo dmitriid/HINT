@@ -1,12 +1,18 @@
 {application, hint_search,
  [
-  {description, ""},
-  {vsn, "1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {mod, { hint_search_app, []}},
-  {env, []}
- ]}.
+    {description, ""},
+    {vsn, "1"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib
+      ]},
+    {mod, { hint_search_app, []}},
+    {env, [
+        {base_stages, [hs_stage_fuzzy, hs_stage_arity, hs_stage_types]},
+        {workers, [
+            {default, [{plt_src, {priv, "tiny_plt"}}]},
+            {bifs,    [{plt_src, {hs_biftab_plt, tabs_to_plt, []}}]}
+          ]}
+      ]}
+  ]}.

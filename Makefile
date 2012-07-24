@@ -35,3 +35,5 @@ doc:
 tags:
 	erl -s tags subdir "./" -s init stop -noshell
 
+dialyzer: compile
+	dialyzer --fullpath apps/*/ebin -Wunmatched_returns -Werror_handling -Wrace_conditions -Wunderspecs

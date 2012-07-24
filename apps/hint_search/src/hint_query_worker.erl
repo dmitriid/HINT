@@ -1,7 +1,7 @@
 -module(hint_query_worker).
 -behaviour(gen_server).
 
--export([q/1]).
+-export([q/1, q/2]).
 
 %%
 %% gen_server callbacks
@@ -15,14 +15,16 @@
         , terminate/2
         ]).
 
-q(Request) ->
-	{ok, Pid} = supervisor:start_child(hint_query_sup, []),
-	Result = gen_server:call(Pid, {q, Request}, infinity),
-	supervisor:terminate_child(hint_query_sup, Pid),
-	Result.
+q(Request) -> q(Request, undefined).
+
+q(Request, Threshold) 
+    when is_number(Threshold);
+    Threshold == undefined ->
+  {ok, Pid} = supervisor:start_child(hint_query_sup, []),
+  gen_server:call(Pid, {q, Request, Threshold}, infinity).
 
 start_link() ->
-	gen_server:start_link(?MODULE, [], []).
+  gen_server:start_link(?MODULE, [], []).
 
 %%
 %% gen_server callbacks
@@ -31,22 +33,22 @@ start_link() ->
 init(_Args) ->
     {ok, []}.
 
-handle_call({q, Req}, _From, State) ->
-	R = try hs_engine_types:q(Req) of
-			L -> {ok, L}
-		catch 
-			_:Reason -> {error, Reason}
-		end,
-    {reply, R, State}.
+handle_call({q, Req, Threshold}, _From, State) ->
+  R = try 
+    hs_search_api:q(hint_search_req:new(Req), Threshold)
+  catch 
+    _:Reason -> {error, Reason}
+  end,
+  {stop, normal, R, State}.
 
 handle_cast(_, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 handle_info(_, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 code_change(_, State, _) ->
-    {ok, State}.
+  {ok, State}.
 
-terminate(shutdown, _State) ->
-    ok.
+terminate(_Reason, _State) ->
+  ok.

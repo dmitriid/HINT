@@ -57,11 +57,14 @@ render(Data) ->
 	]),
 	Rendered.
 
-to_href({MFA, Weight}) ->
+to_href({Weight, MFA, Extra}) ->
 	FunctionName = function_name(MFA),
-	W = io_lib:format("~.1f",[Weight]),
-	lists:append([ "<a href=\"http://erlang.org/doc/man/", function_name_link(MFA), "\">"
-	             , FunctionName, "</a>&nbsp;<small>Weight: ", W ,"</small><br />"]).
+        FunctionType = function_type(Extra),
+	W = io_lib:format("~.1f",[Weight*1.0]),
+	lists:append(["<small> [", W ,"]</small>&nbsp;",
+                     "<a href=\"http://erlang.org/doc/man/", function_name_link(MFA), "\">"
+	             , FunctionName, "</a>&nbsp;<small> :: ", FunctionType, 
+                     "</small><br />"]).
 
 function_name({M, F, A}) ->
 	lists:flatten(lists:append([atom_to_list(M)
@@ -69,3 +72,6 @@ function_name({M, F, A}) ->
 function_name_link({M, F, A}) ->
 	lists:flatten(lists:append([atom_to_list(M)
 	             , ".html#", atom_to_list(F), "-", integer_to_list(A)])).
+
+function_type(Extra) ->
+        proplists:get_value(type_string, Extra, "").
